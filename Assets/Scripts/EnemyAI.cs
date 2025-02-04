@@ -1,51 +1,40 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
-using System.Collections;
 
 public class EnemyAI : MonoBehaviour
 {
+    public Transform target;
     public Transform patrolPoint;
-    public enum EnemyState { Idle, Patrol, Chase, Attack }
-    public EnemyState enemyState;
 
-    public Transform target; // Public variable to store the target's transform
-    private NavMeshAgent ai; // Private variable to store the NavMeshAgent component
+    private NavMeshAgent ai;
     private Animator anim;
     private float distanceToTarget;
-    private Coroutine idleToPatrol;
+    private Coroutine idleToWalk;
 
+    public enum EnemyState
+    {
+        Idle,
+        Walk,
+        Run,
+        Attack
+    }
 
+    public EnemyState enemyState;
     void Start()
     {
         enemyState = EnemyState.Idle;
-
         ai = GetComponent<NavMeshAgent>();
-        if (ai == null)
-        {
-            Debug.LogError("NavMeshAgent component not found on this GameObject!");
-            enabled = false;
-            return;
-        }
-
         anim = GetComponent<Animator>();
-        if (anim == null) { Debug.LogError("Animator component not found!"); enabled = false; return; }
-
-
-        if (target == null)
-        {
-            Debug.LogError("Target Transform not assigned in the Inspector!");
-            enabled = false;
-            return;
-        }
-
         distanceToTarget = Mathf.Abs(Vector3.Distance(target.position, transform.position));
     }
 
-    private IEnumerator SwitchToPatrol()
+    private IEnumerator SwitchToWalk()
     {
-        yield return new WaitForSeconds(5f);
-        enemyState = EnemyState.Patrol;
-        idleToPatrol = null;
+        yield return new WaitForSeconds(5);
+        enemyState = EnemyState.Walk;
+        idleToWalk = null;
     }
 
     private void SwitchState(int newState)
@@ -65,17 +54,15 @@ public class EnemyAI : MonoBehaviour
             case EnemyState.Idle:
                 SwitchState(0);
                 ai.SetDestination(transform.position);
-
-                if (idleToPatrol == null)
+                if (idleToWalk == null)
                 {
-                    idleToPatrol = StartCoroutine(SwitchToPatrol());
+                    idleToWalk = StartCoroutine(SwitchToWalk());
                 }
                 break;
 
-            case EnemyState.Patrol:
+            case EnemyState.Walk:
                 float distanceToPatrolPoint = Mathf.Abs(Vector3.Distance(patrolPoint.position, transform.position));
-
-                if (distanceToPatrolPoint > 2f)
+                if (distanceToPatrolPoint > 2)
                 {
                     SwitchState(1);
                     ai.SetDestination(patrolPoint.position);
@@ -85,25 +72,21 @@ public class EnemyAI : MonoBehaviour
                     SwitchState(0);
                 }
 
-                if (distanceToTarget <= 15f)
+                if (distanceToTarget <= 15)
                 {
-                    enemyState = EnemyState.Chase;
+                    enemyState = EnemyState.Run;
                 }
                 break;
 
-            case EnemyState.Chase:
+            case EnemyState.Run:
                 SwitchState(2);
-                // Original movement code moved here:
-                if (ai != null && target != null)
-                {
-                    ai.SetDestination(target.position);
-                }
+                ai.SetDestination(target.position);
 
-                if (distanceToTarget <= 5f)
+                if (distanceToTarget <= 5)
                 {
                     enemyState = EnemyState.Attack;
                 }
-                else if (distanceToTarget > 15f)
+                else if (distanceToTarget > 15)
                 {
                     enemyState = EnemyState.Idle;
                 }
@@ -111,13 +94,11 @@ public class EnemyAI : MonoBehaviour
 
             case EnemyState.Attack:
                 SwitchState(3);
-                // Implement your attack logic here
-
-                if (distanceToTarget > 5f && distanceToTarget <= 15f)
+                if (distanceToTarget > 5 && distanceToTarget <= 15)
                 {
-                    enemyState = EnemyState.Chase;
+                    enemyState = EnemyState.Run;
                 }
-                else if (distanceToTarget > 15f)
+                else if (distanceToTarget > 15)
                 {
                     enemyState = EnemyState.Idle;
                 }
@@ -125,6 +106,7 @@ public class EnemyAI : MonoBehaviour
 
             default:
                 break;
+
         }
     }
 }
